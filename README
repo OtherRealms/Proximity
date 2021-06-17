@@ -17,4 +17,13 @@ Created for Blender 2.90 and newer.
     Download as Zip
     Open Blender, Preferences, Add-ons
     Install -> choose the zip file
+--How To USe--
+First add an object in 3D-view right panel, 'Proximity'> Add Object and choose object.
+There are two modes, Proximity and Tension. Both modes only relate to the vertices within a single mesh and update on frame change or addon-parameter change.
+Note: The updates don't occur in Edit Mode.
 
+Proximity:
+Assigns values to the threshold and ranged vertex group. Only one groups is neccessary for output.
+Threshold- Assigns a 0 or 1 value to any vertex depending on whether the vertex is within the threshold distance from its closest neighbour.
+
+WIP....
