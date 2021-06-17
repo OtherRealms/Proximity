@@ -11,5 +11,10 @@ MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU# General Public
 
 Created for Blender 2.90 and newer.
 
-To Install:
-Zip all files or download as .Zip. In blender choose Blender Preferences-> Add-ons-> Install. Choose the ZIP file.
+--How to Install--
+
+    Click Clone or Download
+    Download as Zip
+    Open Blender, Preferences, Add-ons
+    Install -> choose the zip file
+
