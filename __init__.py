@@ -487,7 +487,7 @@ class Proximity_objects(bpy.types.PropertyGroup):
         description="Smooth ranged mapping with performance cost",
         update =update_prop
         )
-    expand : BoolProperty()
+    expand : BoolProperty(default= True)
 
 
 
