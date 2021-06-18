@@ -22,8 +22,27 @@ First add an object in 3D-view right panel, 'Proximity'> Add Object and choose o
 There are two modes, Proximity and Tension. Both modes only relate to the vertices within a single mesh and update on frame change or addon-parameter change.
 Note: The updates don't occur in Edit Mode.
 
-Proximity:
-Assigns values to the threshold and ranged vertex group. Only one groups is neccessary for output.
-Threshold- Assigns a 0 or 1 value to any vertex depending on whether the vertex is within the threshold distance from its closest neighbour.
+Vertex Group values can be mapped to vertex colours using geometry nodes, attribute ramp node. From 'Your Vertex Group' to 'Your vertex Col'.
 
-WIP....
+Proximity:
+Assigns values to the threshold and ranged vertex groups. Only one groups is neccessary for output.
+
+Threshold- Assigns a 0 OR 1 value to any vertex depending on whether the vertex is within the threshold distance from its closest neighbour.
+
+Ranged- Adds an extra falloff useding the rangex parameter and uses 0 > 1 values.
+
+Tension:
+Assigns values to the threshold and ranged vertex groups. Only one groups is neccessary for output.
+
+Threshold- Assigns a 0 OR 1 value to any vertex that is being displaced beyond threshold distance.
+
+Ranged- Assigns values 0 > 1. These values are the normalised values of the displaced distances from threshold negative to threshold positive.
+for example. A threshold of 0.05 will give a range from -0.05 to 0.05. If a point moves closer to it's neighbouring point, further than 0.05m, it is considered compressing and negative. 
+If it is move away further than 0.05m it is stretching and postive. These values are then converted to 0-0.5-1
+
+0-------------0.5-----------1
+compressed  Neutral     Stretched
+
+Filter: Choose a vertex group to limit calculations to certain points, this will improve perforamce on complex meshes. Any vertex that is assigned and has a weight of over 0.01 will be included.
+
+
