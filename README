@@ -17,10 +17,11 @@ Created for Blender 2.90 and newer.
     Download as Zip
     Open Blender, Preferences, Add-ons
     Install -> choose the zip file
---How To USe--
+    
+--How To Use--
 First add an object in 3D-view right panel, 'Proximity'> Add Object and choose object.
 There are two modes, Proximity and Tension. Both modes only relate to the vertices within a single mesh and update on frame change or addon-parameter change.
-Note: The updates don't occur in Edit Mode.
+Note: The updates don't occur in Edit Mode. All calculations are made on the unsubdivied mesh, using a subdiv modifier is OK but will be a bit slower.
 
 Vertex Group values can be mapped to vertex colours using geometry nodes, attribute ramp node. From 'Your Vertex Group' to 'Your vertex Col'.
 
