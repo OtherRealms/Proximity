@@ -16,7 +16,7 @@ bl_info = {
     "author" : "Pablo Tochez A.",
     "description" : "For generating proximity and tension weights",
     "blender" : (2, 90, 0),
-    "version" : (0, 1, 1),
+    "version" : (0, 1, 0),
     "location" : "3D view right panel",
     "warning" : "",
     "category" : "Mesh"
@@ -377,9 +377,24 @@ class PROXIMITY_PT_panel(bpy.types.Panel):
                     layout.prop(obj,'range_multiplier')
                 
                 if obj.object:
-                    layout.prop_search(obj, "vertex_group_threshold", obj.object, "vertex_groups", text="Threshold")   
-                    layout.prop_search(obj, "vertex_group_ranged", obj.object, "vertex_groups", text="Ranged")
-                    layout.prop_search(obj, "vertex_group_filter", obj.object, "vertex_groups", text="Filter")
+                    row = layout.row()
+                    row.prop_search(obj, "vertex_group_threshold", obj.object, "vertex_groups", text="Threshold")   
+
+                    add = row.operator("proximity.make_vertgroup",text = '',icon = 'ADD')
+                    add.index = index
+                    add.type = 'Threshold'
+
+                    row = layout.row()
+                    row.prop_search(obj, "vertex_group_ranged", obj.object, "vertex_groups", text="Ranged")
+                    add = row.operator("proximity.make_vertgroup",text = '',icon = 'ADD') 
+                    add.index = index
+                    add.type = 'Ranged'
+
+                    row = layout.row()
+                    row.prop_search(obj, "vertex_group_filter", obj.object, "vertex_groups", text="Filter")
+                    add = row.operator("proximity.make_vertgroup",text = '',icon = 'ADD') 
+                    add.index = index
+                    add.type = 'Filter'
 
                 layout.box()
 
@@ -398,12 +413,60 @@ class PROXIMITY_OT_delete_object(bpy.types.Operator):
     bl_label = "Delete Object" 
     bl_options = {'UNDO'}
 
-    index : bpy.props.IntProperty()
+    index : IntProperty()
 
     def execute(self, context): 
         scene = context.scene
         scene.proximity_objects.remove(self.index)
         return {'FINISHED'}   
+
+class PROXIMITY_OT_make_vertGroup(bpy.types.Operator):
+    bl_idname = "proximity.make_vertgroup" 
+    bl_label = "Create vertex group" 
+    bl_options = {'UNDO'}
+
+    index : IntProperty()
+    type : StringProperty()
+
+    def execute(self, context): 
+        scene = context.scene
+        grp = scene.proximity_objects[self.index]
+        if grp.object:
+            if self.type in ('Tension_col','Proximity_col'):
+                grp.object.data.vertex_colors.new(name=self.type)
+
+            else:
+                grp.object.vertex_groups.new(name=self.type)
+                if self.type == 'Threshold':
+                    grp.vertex_group_threshold = self.type
+                elif self.type == 'Ranged':
+                    grp.vertex_group_ranged = self.type
+                elif self.type == 'Filter':
+                    grp.vertex_group_filter = self.type
+
+        return {'FINISHED'}   
+
+class PROXIMITY_OT_make_vertGroup(bpy.types.Operator):
+    bl_idname = "proximity.make_vertgroup" 
+    bl_label = "Create vertex group" 
+    bl_options = {'UNDO'}
+
+    index : IntProperty()
+    type : StringProperty()
+
+    def execute(self, context): 
+        scene = context.scene
+        grp = scene.proximity_objects[self.index]
+        if grp.object:
+            grp.object.vertex_groups.new(name=self.type)
+            if self.type == 'Threshold':
+                grp.vertex_group_threshold = self.type
+            elif self.type == 'Ranged':
+                grp.vertex_group_ranged = self.type
+            elif self.type == 'Filter':
+                grp.vertex_group_filter = self.type
+
+        return {'FINISHED'}  
 
 
 
@@ -493,6 +556,7 @@ classes = [
     PROXIMITY_PT_panel,
     PROXIMITY_OT_add_object,
     PROXIMITY_OT_delete_object,
+    PROXIMITY_OT_make_vertGroup,
     Proximity_objects,
 
     ]
@@ -503,7 +567,7 @@ def register():
         register_class(cls)
 
     bpy.app.handlers.frame_change_post.append(execute)
-    bpy.types.Scene.proximity_objects = bpy.props.CollectionProperty(type = Proximity_objects)
+    bpy.types.Scene.proximity_objects = CollectionProperty(type = Proximity_objects)
 
 
 
