@@ -35,15 +35,11 @@ from bpy.props import *
 @persistent
 def execute(dummy):
     scene = bpy.context.scene
+    dg = bpy.context.evaluated_depsgraph_get() 
 
     for grp in scene.proximity_objects:
         if grp.live and grp.object and grp.object.mode != 'EDIT':
             obj = grp.object
-            #obj.data.calc_loop_triangles()
-
-
-            dg = bpy.context.evaluated_depsgraph_get() 
-            #eval = obj.evaluated_get(dg)
 
             obj_eval = bmesh.new()
             obj_eval.from_object(obj, dg, cage=True, face_normals=True)
@@ -107,7 +103,7 @@ def vert_proximity(grp,obj,obj_eval,ranged_id,threshold_id):
 
     length = len(obj_eval.verts)
 
-    positions = []#np.zeros(shape=(length,4), dtype= object)
+    positions = []
     kd = kdtree.KDTree(length) 
 
     for vert in obj_eval.verts:
@@ -269,7 +265,9 @@ def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
             #print(n,last)
             average(obj,weights,distances,ranged_id,last)
 
-    
+    del distances
+    del weights
+
 def average(obj,weights,distances,ranged_id,last):
     
     for id in distances:
@@ -344,7 +342,7 @@ class PROXIMITY_PT_panel(bpy.types.Panel):
             row = layout.row()
             icon = 'PROP_ON' if obj.live else 'PROP_OFF'
             row.prop(obj,'live',text = '',icon = icon,emboss = False)
-            name =' '
+            name = ' '
             if obj.object:
                 name += obj.object.name
             if obj.live:
