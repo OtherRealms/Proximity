@@ -16,7 +16,7 @@ bl_info = {
     "author" : "Pablo Tochez A.",
     "description" : "For generating proximity and tension weights",
     "blender" : (2, 90, 0),
-    "version" : (0, 1, 0),
+    "version" : (0, 1, 1),
     "location" : "3D view right panel",
     "warning" : "",
     "category" : "Mesh"
