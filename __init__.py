@@ -16,7 +16,7 @@ bl_info = {
     "author" : "Pablo Tochez A.",
     "description" : "For generating proximity and tension weights",
     "blender" : (2, 90, 0),
-    "version" : (0, 1, 0),
+    "version" : (0, 1, 2),
     "location" : "3D view right panel",
     "warning" : "",
     "category" : "Mesh"
@@ -32,6 +32,7 @@ from bpy.app.handlers import persistent
 import collections
 from bpy.props import *
 
+
 @persistent
 def execute(dummy):
     scene = bpy.context.scene
@@ -40,6 +41,11 @@ def execute(dummy):
     for grp in scene.proximity_objects:
         if grp.live and grp.object and grp.object.mode != 'EDIT':
             obj = grp.object
+
+            for mod in obj.modifiers:
+                if mod.type == 'CLOTH':
+                    if not mod.point_cache.is_baked:
+                        return
 
             obj_eval = bmesh.new()
             obj_eval.from_object(obj, dg, cage=True, face_normals=True)
@@ -338,60 +344,70 @@ class PROXIMITY_PT_panel(bpy.types.Panel):
         layout.box()
 
 
-        for index,obj in enumerate(scene.proximity_objects):
+        for index,grp in enumerate(scene.proximity_objects):
             row = layout.row()
-            icon = 'PROP_ON' if obj.live else 'PROP_OFF'
-            row.prop(obj,'live',text = '',icon = icon,emboss = False)
+            
             name = ' '
-            if obj.object:
-                name += obj.object.name
-            if obj.live:
-                name += ' :LIVE'
+            if grp.object:
+                name += grp.object.name
+            if grp.live:
+                is_baked = True
+                for mod in grp.object.modifiers:
+                    if mod.type == 'CLOTH' and not mod.point_cache.is_baked:
+                        row.alert = True
+                        name += ' :CLOTH NOT BAKED'
+                        row.label(text = '',icon = 'PROP_OFF')
+                        is_baked= False
+                if is_baked:
+                    name += ' :LIVE'
+                    row.prop(grp,'live',text = '',icon = 'PROP_ON',emboss = False)
+            else:
+                row.prop(grp,'live',text = '',icon = 'PROP_OFF',emboss = False)
 
-            arrow = 'DISCLOSURE_TRI_DOWN' if obj.expand else 'DISCLOSURE_TRI_RIGHT'
-            row.prop(obj,'expand',text= name,icon = arrow,emboss = False)
+            arrow = 'DISCLOSURE_TRI_DOWN' if grp.expand else 'DISCLOSURE_TRI_RIGHT'
+            row.prop(grp,'expand',text= name,icon = arrow,emboss = False)
             
             row.operator("proximity.delete_object",text = '',icon = 'TRASH').index = index
 
-            if obj.expand:
-                layout.prop(obj,'mode')
+            if grp.expand:
+                layout.prop(grp,'mode')
                 
-                layout.prop(obj,'object')
+                layout.prop(grp,'object')
 
-                if obj.mode =='Tension':
+                if grp.mode =='Tension':
                     
-                    layout.prop(obj,'tension_distance')
+                    layout.prop(grp,'tension_distance')
                     col = layout.column()
-                    if not obj.vertex_group_ranged:
+                    if not grp.vertex_group_ranged:
                         col.enabled = False
-                    col.prop(obj,'bias')
+                    col.prop(grp,'bias')
                     row = col.row()
-                    row.prop(obj,'average')
-                    row.prop(obj,'iterations')
+                    row.prop(grp,'average')
+                    row.prop(grp,'iterations')
                     row = col.row()
-                    row.prop(obj,'dominance')
+                    row.prop(grp,'dominance')
 
 
-                elif obj.mode =='Proximity':
-                    layout.prop(obj,'proximity')
-                    layout.prop(obj,'range_multiplier')
+                elif grp.mode =='Proximity':
+                    layout.prop(grp,'proximity')
+                    layout.prop(grp,'range_multiplier')
                 
-                if obj.object:
+                if grp.object:
                     row = layout.row()
-                    row.prop_search(obj, "vertex_group_threshold", obj.object, "vertex_groups", text="Threshold")   
+                    row.prop_search(grp, "vertex_group_threshold", grp.object, "vertex_groups", text="Threshold")   
 
                     add = row.operator("proximity.make_vertgroup",text = '',icon = 'ADD')
                     add.index = index
                     add.type = 'Threshold'
 
                     row = layout.row()
-                    row.prop_search(obj, "vertex_group_ranged", obj.object, "vertex_groups", text="Ranged")
+                    row.prop_search(grp, "vertex_group_ranged", grp.object, "vertex_groups", text="Ranged")
                     add = row.operator("proximity.make_vertgroup",text = '',icon = 'ADD') 
                     add.index = index
                     add.type = 'Ranged'
 
                     row = layout.row()
-                    row.prop_search(obj, "vertex_group_filter", obj.object, "vertex_groups", text="Filter")
+                    row.prop_search(grp, "vertex_group_filter", grp.object, "vertex_groups", text="Filter")
                     add = row.operator("proximity.make_vertgroup",text = '',icon = 'ADD') 
                     add.index = index
                     add.type = 'Filter'
