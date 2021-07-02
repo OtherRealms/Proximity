@@ -44,6 +44,9 @@ If it is move away further than 0.05m it is stretching and postive. These values
 0-------------0.5-----------1
 compressed  Neutral     Stretched
 
+Cloth simulations:
+Cloth sims will need to be baked before any calculations are made to avoid interfering with cache. I highly recommend that you add a Corrective Smooth modifier to you mesh.
+
 Filter: Choose a vertex group to limit calculations to certain points, this will improve perforamce on complex meshes. Any vertex that is assigned and has a weight of over 0.01 will be included.
 
 
