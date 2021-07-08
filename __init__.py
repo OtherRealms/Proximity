@@ -462,28 +462,6 @@ class PROXIMITY_OT_make_vertGroup(bpy.types.Operator):
 
         return {'FINISHED'}   
 
-class PROXIMITY_OT_make_vertGroup(bpy.types.Operator):
-    bl_idname = "proximity.make_vertgroup" 
-    bl_label = "Create vertex group" 
-    bl_options = {'UNDO'}
-
-    index : IntProperty()
-    type : StringProperty()
-
-    def execute(self, context): 
-        scene = context.scene
-        grp = scene.proximity_objects[self.index]
-        if grp.object:
-            grp.object.vertex_groups.new(name=self.type)
-            if self.type == 'Threshold':
-                grp.vertex_group_threshold = self.type
-            elif self.type == 'Ranged':
-                grp.vertex_group_ranged = self.type
-            elif self.type == 'Filter':
-                grp.vertex_group_filter = self.type
-
-        return {'FINISHED'}  
-
 
 
 class Proximity_objects(bpy.types.PropertyGroup):
