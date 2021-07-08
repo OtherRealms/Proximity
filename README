@@ -10,13 +10,15 @@ MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU# General Public
 
 
 Created for Blender 2.90 and newer.
+This add-on is assign vertex weights for vertex proximity weights and tension weights within a single object. 
+This is not normally possible in Blender as objects cannot reference their own mesh data using either proximity modifier or Geometry Nodes.
 
 --How to Install--
 
-    Click Clone or Download
-    Download as Zip
-    Open Blender, Preferences, Add-ons
-    Install -> choose the zip file
+Click Clone or Download
+Download as Zip
+Open Blender, Preferences, Add-ons
+Install -> choose the zip file
     
 --How To Use--
 First add an object in 3D-view right panel, 'Proximity'> Add Object and choose object.
