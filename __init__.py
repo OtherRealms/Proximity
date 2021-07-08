@@ -350,19 +350,19 @@ class PROXIMITY_PT_panel(bpy.types.Panel):
             name = ' '
             if grp.object:
                 name += grp.object.name
-            if grp.live:
-                is_baked = True
-                for mod in grp.object.modifiers:
-                    if mod.type == 'CLOTH' and not mod.point_cache.is_baked:
-                        row.alert = True
-                        name += ' :CLOTH NOT BAKED'
-                        row.label(text = '',icon = 'PROP_OFF')
-                        is_baked= False
-                if is_baked:
-                    name += ' :LIVE'
-                    row.prop(grp,'live',text = '',icon = 'PROP_ON',emboss = False)
-            else:
-                row.prop(grp,'live',text = '',icon = 'PROP_OFF',emboss = False)
+                if grp.live:
+                    is_baked = True
+                    for mod in grp.object.modifiers:
+                        if mod.type == 'CLOTH' and not mod.point_cache.is_baked:
+                            row.alert = True
+                            name += ' :CLOTH NOT BAKED'
+                            row.label(text = '',icon = 'PROP_OFF')
+                            is_baked= False
+                    if is_baked:
+                        name += ' :LIVE'
+                        row.prop(grp,'live',text = '',icon = 'PROP_ON',emboss = False)
+                else:
+                    row.prop(grp,'live',text = '',icon = 'PROP_OFF',emboss = False)
 
             arrow = 'DISCLOSURE_TRI_DOWN' if grp.expand else 'DISCLOSURE_TRI_RIGHT'
             row.prop(grp,'expand',text= name,icon = arrow,emboss = False)
