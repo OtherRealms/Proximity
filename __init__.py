@@ -524,7 +524,7 @@ class PROXIMITY_OT_make_vertGroup(bpy.types.Operator):
         scene = context.scene
         grp = scene.proximity_objects[self.index]
         if grp.mode in ('Proximity','Tension'):
-            if grp.object and self.type not in grp.object.vertex_groups.keys:
+            if grp.object and self.type not in grp.object.vertex_groups.keys():
                 grp.object.vertex_groups.new(name=self.type)
                 if self.type == 'Threshold':
                     grp.vertex_group_threshold = self.type
