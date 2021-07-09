@@ -23,7 +23,6 @@ bl_info = {
 }
 
 
-from typing import Collection
 import bpy
 import bmesh
 from bpy.props import*
