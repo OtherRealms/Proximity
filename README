@@ -19,6 +19,9 @@ Click Clone or Download
 Download as Zip
 Open Blender, Preferences, Add-ons
 Install -> choose the zip file
+
+--install baking---
+Beking requires the python PILLOW library. Install by clicking "Install PILLOW" in the baking panel. It will take a few minutes, you can see progress in the console. Once completed you must restart Blender.
     
 --How To Use--
 First add an object in 3D-view right panel, 'Proximity'> Add Object and choose object.
@@ -50,5 +53,7 @@ Cloth simulations:
 Cloth sims will need to be baked before any calculations are made to avoid interfering with cache. I highly recommend that you add a Corrective Smooth modifier to you mesh.
 
 Filter: Choose a vertex group to limit calculations to certain points, this will improve perforamce on complex meshes. Any vertex that is assigned and has a weight of over 0.01 will be included.
+
+Baking pixel Sequence demo: https://youtu.be/QT_QXy7xpZE
 
 
