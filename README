@@ -12,6 +12,8 @@ MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU# General Public
 Created for Blender 2.90 and newer.
 This add-on is assign vertex weights for vertex proximity weights and tension weights within a single object. 
 This is not normally possible in Blender as objects cannot reference their own mesh data using either proximity modifier or Geometry Nodes.
+Note that a number of physics simulations may not work correctly as modiying weights or colors causes the caches to be outdated. The best practice is to bake the simulations first with the 'Live' button disabled.
+Furthermore, in some cases it is nescessary to bake the proximity weights to image sequences.
 
 --How to Install--
 
