@@ -16,21 +16,20 @@ bl_info = {
     "author" : "Pablo Tochez A.",
     "description" : "For generating proximity and tension weights",
     "blender" : (2, 90, 0),
-    "version" : (0, 1, 3),
+    "version" : (0, 1, 4),
     "location" : "3D view right panel",
     "warning" : "",
     "category" : "Mesh"
 }
 
 
-import bpy
-import bmesh
+import collections
+import bpy,bmesh
 from bpy.props import*
-import mathutils
 from mathutils import Vector,kdtree
 from bpy.app.handlers import persistent
-import collections
-from bpy.props import *
+from bpy.types import AddonPreferences,Operator,Panel
+from .bake import PROXIMITY_OT_install_PILLOW,PROXIMITY_PT_BakePanel,PROXIMITY_OT_bake,is_ready
 
 
 @persistent
@@ -70,35 +69,42 @@ def execute(dummy):
 
                 obj.data.vertices.foreach_get('index',ids)
 
+                reset = not grp.cumulative or scene.frame_current == scene.frame_start
+
                 if ranged_grp and ranged_grp in obj.vertex_groups.keys(): 
                     ranged_id = obj.vertex_groups[ranged_grp].index
-                    if grp.mode == 'Proximity':
-                        obj.vertex_groups[ranged_grp].add(ids, 0, 'REPLACE' )
-                    if grp.mode == 'Tension':
-                        obj.vertex_groups[ranged_grp].add(ids, 0.5, 'REPLACE' )
+                    if reset:
+                        if grp.mode == 'Proximity':
+                            obj.vertex_groups[ranged_grp].add(ids, 0, 'REPLACE' )
+                        if grp.mode == 'Tension':
+                            obj.vertex_groups[ranged_grp].add(ids, 0.5, 'REPLACE' )
 
                 if threshold_grp and threshold_grp in obj.vertex_groups.keys(): 
                     threshold_id = obj.vertex_groups[threshold_grp].index
-                    obj.vertex_groups[threshold_grp].add(ids, 0, 'REPLACE')
+                    if reset:
+                        obj.vertex_groups[threshold_grp].add(ids, 0, 'REPLACE')
             else:
                 #Proximity objects
 
                 for object in collection.objects:
                     if not object or object.type != 'MESH':
                         continue
+
                     size = len(object.data.vertices)
                     ids = [0]*size
                     object.data.vertices.foreach_get('index',ids)
-                    if ranged_grp and ranged_grp in object.vertex_groups.keys():
-                        object.vertex_groups[ranged_grp].add(ids, 0, 'REPLACE' )
 
-                    if threshold_grp and threshold_grp in object.vertex_groups.keys(): 
-                        threshold_id = object.vertex_groups[threshold_grp].index
-                        object.vertex_groups[threshold_grp].add(ids, 0, 'REPLACE' )
+                    if not grp.cumulative or scene.frame_current == scene.frame_start:
+                        if ranged_grp and ranged_grp in object.vertex_groups.keys():
+                            object.vertex_groups[ranged_grp].add(ids, 0, 'REPLACE' )
+
+                        if threshold_grp and threshold_grp in object.vertex_groups.keys(): 
+                            object.vertex_groups[threshold_grp].add(ids, 0, 'REPLACE' )
 
             #-------------Mode---------
             
             if ranged_grp or threshold_grp:
+                is_ready[0] = False
                 if grp.mode == 'Proximity':
                     vert_proximity(grp,
                                 obj=obj,
@@ -113,7 +119,7 @@ def execute(dummy):
                                 target = target,
                                 collection = collection,
                                 ranged_grp = ranged_grp,
-                                threshold_grp = threshold_grp ,
+                                threshold_grp = threshold_grp,
                                 depsgraph= dg
 
                                 )
@@ -126,13 +132,17 @@ def execute(dummy):
                                 threshold_id= threshold_id, 
                                 )
 
-            if obj_eval:
-                obj_eval.free()
+                if obj_eval:
+                    obj_eval.free()
+                is_ready[0] =True
+
+                
 
 def vert_proximity(grp,obj,obj_eval,ranged_id,threshold_id):
     range_m = grp.range_multiplier
     proximity = grp.proximity
     filter_verts = grp.vertex_group_filter
+    cooldown = grp.cooldown
 
     if filter_verts:
         filter_id = obj.vertex_groups[filter_verts].index
@@ -178,19 +188,23 @@ def vert_proximity(grp,obj,obj_eval,ranged_id,threshold_id):
             
             threshold_val = 1 if dist  < proximity else 0
 
-            set_weights(vert_a,ranged_id,threshold_id,ranged_val,threshold_val)
-
+            if grp.cumulative:
+                set_weights_cumulative(vert_a,ranged_id,threshold_id,ranged_val,threshold_val,cooldown)
+            else:
+                set_weights(vert_a,ranged_id,threshold_id,ranged_val,threshold_val)
+    
 def object_proximity(grp,target,collection,ranged_grp,threshold_grp,depsgraph):
     range_m = grp.range_multiplier
     proximity = grp.proximity
-    filter_verts = grp.vertex_group_filter
+    filter_grp = grp.vertex_group_filter
     count = len(collection.objects)
-    neighbours = grp.neighbours
+    neighbours = grp.neighbours if not grp.cumulative else count    
+    threshold_id = None
+    cooldown = grp.cooldown
+
 
     #make object KD tree
     kd = kdtree.KDTree(count) 
-
-
 
     for index, object in enumerate(collection.objects):
         obj= object.evaluated_get(depsgraph)
@@ -201,35 +215,69 @@ def object_proximity(grp,target,collection,ranged_grp,threshold_grp,depsgraph):
 
     #Find nearest objects
     target_co = target.matrix_world @ target.location
-    n = kd.find_n(target_co,neighbours)
+    nearest = kd.find_n(target_co,neighbours)
+    
 
-    for item in n:
+    for item in nearest:
         _co,_id,dist = item
 
         if proximity <= proximity:
             object = collection.objects[_id]
+            if filter_grp in object.vertex_groups.keys():
+                filter_id = object.vertex_groups[filter_grp].index
 
-            size = len(object.data.vertices)
-            ids = [0]*size
-            object.data.vertices.foreach_get('index',ids)
+            if ranged_grp in object.vertex_groups.keys():
+                ranged_id = object.vertex_groups[ranged_grp].index
+                
 
-            ranged_val = (dist - proximity*range_m)/(proximity-proximity*range_m)
+            if threshold_grp in object.vertex_groups.keys():
+                threshold_id = object.vertex_groups[threshold_grp].index
+
+
+            ranged_val = max(0,(dist - proximity*range_m)/(proximity-proximity*range_m))
             threshold_val = 1 if dist  < proximity else 0
 
-            if ranged_grp and ranged_grp in object.vertex_groups.keys():
-                object.vertex_groups[ranged_grp].add(ids, ranged_val, 'REPLACE' )
+            for vert in object.data.vertices:
+                included = False
+                if filter_grp:
+                    included = False
+                    for g in vert.groups:
+                        if g.group == filter_id and g.weight > 0.01:
+                            included = True
+                            break
+                else:
+                    included = True
 
-            if threshold_grp and  threshold_grp  in object.vertex_groups.keys():
-                object.vertex_groups[threshold_grp].add(ids, threshold_val, 'REPLACE' )
+                if included:
+                    if grp.cumulative:
+                        set_weights_cumulative(vert,ranged_id,threshold_id,ranged_val,threshold_val,cooldown)
+                    else:
+                        set_weights(vert,ranged_id,threshold_id,ranged_val,threshold_val)
+
+
 
 def set_weights(vert,ranged_id,threshold_id,ranged_val,threshold_val):
-    
     for group in vert.groups:
         if group.group == ranged_id:
             group.weight = ranged_val
 
         elif group.group == threshold_id:
             group.weight = threshold_val
+
+def set_weights_cumulative(vert,ranged_id,threshold_id,ranged_val,threshold_val,cooldown):
+    for group in vert.groups:
+        if group.group == ranged_id:
+            if ranged_val > group.weight:
+                group.weight = min(1,group.weight + ranged_val)
+            elif cooldown > 0:
+                group.weight = max(0,group.weight - cooldown)
+
+
+        elif group.group == threshold_id:
+            if threshold_val > group.weight:
+                group.weight += min(1,threshold_val)
+            elif cooldown > 0:
+                group.weight = max(0,group.weight - cooldown )
 
 def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
     filter_verts = grp.vertex_group_filter
@@ -242,6 +290,8 @@ def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
 
     distances = collections.defaultdict(list)
     weights = collections.defaultdict(float)
+    cooldown = grp.cooldown
+
 
     for edge in obj.data.edges:
         id_a = edge.vertices[0]
@@ -289,7 +339,6 @@ def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
         distances[id_a].append(neighbour_b)
         distances[id_b].append(neighbour_a)
 
-    #print(distances)  
     
 
     for id in distances:
@@ -331,8 +380,12 @@ def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
                 temp_ranged_id = None
             else:
                 temp_ranged_id = ranged_id
+
+            if grp.cumulative:
+                set_weights_cumulative(vert,temp_ranged_id,threshold_id,ranged_val,threshold_val,cooldown)
+            else:
+                set_weights(vert,temp_ranged_id,threshold_id,ranged_val,threshold_val)
                 
-            set_weights_tension(vert,temp_ranged_id,threshold_id,ranged_val,threshold_val)  
 
     if grp.average:
         iterations = grp.iterations
@@ -368,31 +421,22 @@ def average(obj,weights,distances,ranged_id,last):
 
                 if last:
                     vert_a = obj.data.vertices[id]
-                    set_weights_tension(vert_a,ranged_id,None,ranged_val,0)  
+                    set_weights(vert_a,ranged_id,None,ranged_val,0)  
 
             else:
                 #print(s,l)
                 ranged_val = current_weight
                 if last:
                     vert_a = obj.data.vertices[id]
-                    set_weights_tension(vert_a,ranged_id,None,ranged_val,0)  
-
-def set_weights_tension(vert,ranged_id,threshold_id,ranged_val,threshold_val):
-    
-    for group in vert.groups:
-        if group.group == ranged_id: 
-            group.weight = ranged_val
-            
-        elif group.group == threshold_id:
-            group.weight = threshold_val
-          
+                    set_weights(vert_a,ranged_id,None,ranged_val,0)  
+         
 def distance_vec(point1: Vector, point2: Vector) -> float:
     return (point2 - point1).length       
 
 def update_prop(self,coontext):
     execute(self)
 
-class PROXIMITY_PT_panel(bpy.types.Panel):
+class PROXIMITY_PT_panel(Panel):
     bl_label = "Proximity"
     bl_idname = "PROXIMITY_PT_panel"
     bl_space_type =  'VIEW_3D'
@@ -443,10 +487,9 @@ class PROXIMITY_PT_panel(bpy.types.Panel):
                 obj = grp.object
 
                 if grp.mode =='Tension':
-                    
                     layout.prop(grp,'tension_distance')
                     col = layout.column()
-                    if not grp.vertex_group_ranged:
+                    if not grp.vertex_group_ranged and not grp.vertex_group_threshold:
                         col.enabled = False
                     col.prop(grp,'bias')
                     row = col.row()
@@ -454,19 +497,30 @@ class PROXIMITY_PT_panel(bpy.types.Panel):
                     row.prop(grp,'iterations')
                     row = col.row()
                     row.prop(grp,'dominance')
+                    col.prop(grp,'cumulative')
+                    if grp.cumulative:
+                        col.prop(grp,'cooldown')
 
 
                 elif grp.mode =='Proximity':
                     layout.prop(grp,'proximity')
                     layout.prop(grp,'range_multiplier')
+                    layout.prop(grp,'cumulative')
+                    if grp.cumulative:
+                        layout.prop(grp,'cooldown')
 
-                elif grp.mode =='Proximity_obj':
+                elif grp.mode == 'Proximity_obj':
+                    layout.prop(grp,'proximity')
+                    layout.prop(grp,'range_multiplier')
+                    layout.prop(grp,'collection')
+                    layout.prop(grp,'cumulative')
+                    if grp.cumulative:
+                        layout.prop(grp,'cooldown')
+                    else:
+                        layout.prop(grp,'neighbours')
                     if grp.collection and grp.collection.objects:
                         obj = grp.collection.objects[0]
-                        layout.prop(grp,'proximity')
-                        layout.prop(grp,'range_multiplier')
-                        layout.prop(grp,'collection')
-                        layout.prop(grp,'neighbours')
+                    
                     
                 if obj:
                     row = layout.row()
@@ -488,9 +542,12 @@ class PROXIMITY_PT_panel(bpy.types.Panel):
                     add.index = index
                     add.type = 'Filter'
 
+                    
+                    layout.operator("proximity.bake",icon ='DOCUMENTS').grp = index
+
                 layout.box()
 
-class PROXIMITY_OT_add_object(bpy.types.Operator):
+class PROXIMITY_OT_add_object(Operator):
     bl_idname = "proximity.add_object" 
     bl_label = "Add Object" 
     bl_options = {'UNDO'}
@@ -500,7 +557,7 @@ class PROXIMITY_OT_add_object(bpy.types.Operator):
         scene.proximity_objects.add()
         return {'FINISHED'}   
 
-class PROXIMITY_OT_delete_object(bpy.types.Operator):
+class PROXIMITY_OT_delete_object(Operator):
     bl_idname = "proximity.delete_object" 
     bl_label = "Delete Object" 
     bl_options = {'UNDO'}
@@ -512,7 +569,7 @@ class PROXIMITY_OT_delete_object(bpy.types.Operator):
         scene.proximity_objects.remove(self.index)
         return {'FINISHED'}   
 
-class PROXIMITY_OT_make_vertGroup(bpy.types.Operator):
+class PROXIMITY_OT_make_vertGroup(Operator):
     bl_idname = "proximity.make_vertgroup" 
     bl_label = "Create vertex group" 
     bl_options = {'UNDO'}
@@ -551,7 +608,6 @@ class PROXIMITY_OT_make_vertGroup(bpy.types.Operator):
                 self.report({'ERROR'},"No collection has been assigned")
         return {'FINISHED'}   
   
-
 class Proximity_objects(bpy.types.PropertyGroup):
     object : PointerProperty(name = 'Object',type = bpy.types.Object)
 
@@ -623,8 +679,10 @@ class Proximity_objects(bpy.types.PropertyGroup):
         )
 
     mode : EnumProperty(
-        items=(('Proximity','Proximity Verts','Proximity for verts within a single mesh'),('Proximity_obj','Proximity Objects','Proximity from target object to collection objects'),
-        ('Tension','Tension','Compression and stretch of polys within a single mesh')),
+        items=(
+            ('Proximity','Vertices Proximity','Proximity for verts within a single mesh',0),
+            ('Proximity_obj','Objects Proximity','Proximity from target object to collection objects',1),
+            ('Tension','Tension','Compression and stretch of polys within a single mesh',2)),
         update =update_prop
         )
 
@@ -641,6 +699,10 @@ class Proximity_objects(bpy.types.PropertyGroup):
         description="Smooth ranged mapping with performance cost",
         update =update_prop
         )
+    cumulative : BoolProperty(name='Cumulative')
+    
+    cooldown : FloatProperty(min = 0, max = 1,name = 'Cool Down',description = "The amount of weight reduced per frame, higher is faster. TIP: try very low values like 0.001")
+    
     expand : BoolProperty(default= True)
 
 
@@ -650,6 +712,9 @@ classes = [
     PROXIMITY_OT_delete_object,
     PROXIMITY_OT_make_vertGroup,
     Proximity_objects,
+    PROXIMITY_OT_install_PILLOW,
+    PROXIMITY_PT_BakePanel,
+    PROXIMITY_OT_bake
 
     ]
 
@@ -660,6 +725,7 @@ def register():
 
     bpy.app.handlers.frame_change_post.append(execute)
     bpy.types.Scene.proximity_objects = CollectionProperty(type = Proximity_objects)
+    bpy.types.Scene.proximity_output = StringProperty(name = 'Directory',subtype = 'DIR_PATH')
 
 
 
@@ -670,4 +736,5 @@ def unregister():
     
     bpy.app.handlers.frame_change_post.remove(execute)
     del bpy.types.Scene.proximity_objects
+    del bpy.types.Scene.proximity_output 
 
