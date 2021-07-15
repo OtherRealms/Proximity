@@ -59,7 +59,7 @@ def execute(dummy):
 
             if grp.mode in ('Proximity','Tension'):
                 obj_eval = bmesh.new()
-                obj_eval.from_object(obj, dg, cage=True, face_normals=True)
+                obj_eval.from_object(obj, dg, cage=False, face_normals=True)
                 obj_eval.verts.ensure_lookup_table()
                 obj_eval.faces.ensure_lookup_table()
                 obj_eval.verts.layers.deform.verify()
