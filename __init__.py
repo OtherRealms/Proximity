@@ -16,7 +16,7 @@ bl_info = {
     "author" : "Pablo Tochez A.",
     "description" : "For generating proximity and tension weights",
     "blender" : (2, 90, 0),
-    "version" : (0, 1, 4),
+    "version" : (0, 1, 5),
     "location" : "3D view right panel",
     "warning" : "",
     "category" : "Mesh"
@@ -25,11 +25,66 @@ bl_info = {
 
 import collections
 import bpy,bmesh
+from functools import lru_cache
 from bpy.props import*
 from mathutils import Vector,kdtree
 from bpy.app.handlers import persistent
 from bpy.types import AddonPreferences,Operator,Panel
 from .bake import PROXIMITY_OT_install_PILLOW,PROXIMITY_PT_BakePanel,PROXIMITY_OT_bake,is_ready
+
+@lru_cache(maxsize=32)
+def included_verts(ids,obj,filter_verts,filter_id):
+    inc_verts = []
+
+    for id in ids:
+        included = True
+        if filter_verts:
+            included = False
+            original_vert = obj.data.vertices[id]
+            for g in original_vert.groups:
+                if g.group == filter_id and g.weight > 0.01:
+                    included = True
+                    break
+        
+        if not included:
+            continue
+
+        
+        inc_verts.append(id)
+
+    return tuple(inc_verts)
+
+@lru_cache(maxsize=32)
+def included_edges(obj,inc_verts):
+    inc_edges = []
+
+    for edge in obj.data.edges:
+        id_a = edge.vertices[0]
+        id_b = edge.vertices[1]
+
+        if id_a not in inc_verts:
+                continue
+        
+        #original Verts 
+        vert_a = obj.data.vertices[id_a]
+        coA =  vert_a.co
+
+        vert_b = obj.data.vertices[id_b]
+        coB =  vert_b.co
+
+
+        original_dist = distance_vec(coA,coB)
+        inc_edges.append((id_a,id_b,original_dist))
+
+    return tuple(inc_edges)
+
+
+@lru_cache(maxsize=32)
+def get_vert_ids(obj):
+    size = len(obj.data.vertices)
+    ids = [0]*size
+    obj.data.vertices.foreach_get('index',ids)
+    return tuple(ids)   
 
 
 @persistent
@@ -49,7 +104,7 @@ def execute(dummy):
                     if not mod.point_cache.is_baked:
                         return
 
-            ranged_grp = grp.vertex_group_ranged
+            ranged_grp = grp.vertex_group_ranged 
             threshold_grp = grp.vertex_group_threshold
             ranged_id = None
             threshold_id = None
@@ -57,17 +112,16 @@ def execute(dummy):
             #assign and set defaults
             obj_eval = None
 
+            #refresh cache
+            if scene.frame_current == scene.frame_start:
+                get_vert_ids.cache_clear()
+                included_edges.cache_clear()
+                included_verts.cache_clear()
+
             if grp.mode in ('Proximity','Tension'):
-                obj_eval = bmesh.new()
-                obj_eval.from_object(obj, dg, cage=True, face_normals=True)
-                obj_eval.verts.ensure_lookup_table()
-                obj_eval.faces.ensure_lookup_table()
-                obj_eval.verts.layers.deform.verify()
+                obj_eval= obj.evaluated_get(dg)
 
-                size = len(obj_eval.verts)
-                ids = [0]*size
-
-                obj.data.vertices.foreach_get('index',ids)
+                ids = get_vert_ids(obj)
 
                 reset = not grp.cumulative or scene.frame_current == scene.frame_start
 
@@ -90,9 +144,7 @@ def execute(dummy):
                     if not object or object.type != 'MESH':
                         continue
 
-                    size = len(object.data.vertices)
-                    ids = [0]*size
-                    object.data.vertices.foreach_get('index',ids)
+                    ids = get_vert_ids(obj)
 
                     if not grp.cumulative or scene.frame_current == scene.frame_start:
                         if ranged_grp and ranged_grp in object.vertex_groups.keys():
@@ -132,11 +184,7 @@ def execute(dummy):
                                 threshold_id= threshold_id, 
                                 )
 
-                if obj_eval:
-                    obj_eval.free()
                 is_ready[0] =True
-
-                
 
 def vert_proximity(grp,obj,obj_eval,ranged_id,threshold_id):
     range_m = grp.range_multiplier
@@ -144,29 +192,25 @@ def vert_proximity(grp,obj,obj_eval,ranged_id,threshold_id):
     filter_verts = grp.vertex_group_filter
     cooldown = grp.cooldown
 
+    filter_id = None
+
+    ids = get_vert_ids(obj)
+
     if filter_verts:
         filter_id = obj.vertex_groups[filter_verts].index
 
-    length = len(obj_eval.verts)
+    length = len(ids)
 
     positions = []
     kd = kdtree.KDTree(length) 
 
-    for vert in obj_eval.verts:
-        included = True
+    inc_verts = included_verts(ids,obj,filter_verts,filter_id)
 
-        if filter_verts:
-            included = False
-            o_vert = obj.data.vertices[vert.index]
-            for g in o_vert.groups:
-                if g.group == filter_id and g.weight >  0.01:
-                    included = True
-                    break
-        
-        if included:
-            co = obj.matrix_world @ vert.co
-            positions.append((co,vert.index))
-            kd.insert(co, vert.index)
+    for id in inc_verts:
+        vert = obj_eval.data.vertices[id]
+        co = obj.matrix_world @ vert.co
+        positions.append((co,vert.index))
+        kd.insert(co, vert.index)
 
     kd.balance()
 
@@ -184,7 +228,11 @@ def vert_proximity(grp,obj,obj_eval,ranged_id,threshold_id):
 
             vert_a = obj.data.vertices[id]
 
-            ranged_val = (dist - proximity*range_m)/(proximity-proximity*range_m)
+            if grp.invert:
+                ranged_val = max(min((dist - proximity) /(proximity*range_m -proximity),1),0)
+            else:
+                ranged_val = max(min((dist - proximity*range_m)/(proximity - proximity*range_m),1),0)
+
             
             threshold_val = 1 if dist  < proximity else 0
 
@@ -239,6 +287,8 @@ def object_proximity(grp,target,collection,ranged_grp,threshold_grp,depsgraph):
 
             for vert in object.data.vertices:
                 included = False
+                
+
                 if filter_grp:
                     included = False
                     for g in vert.groups:
@@ -254,8 +304,6 @@ def object_proximity(grp,target,collection,ranged_grp,threshold_grp,depsgraph):
                     else:
                         set_weights(vert,ranged_id,threshold_id,ranged_val,threshold_val)
 
-
-
 def set_weights(vert,ranged_id,threshold_id,ranged_val,threshold_val):
     for group in vert.groups:
         if group.group == ranged_id:
@@ -267,90 +315,68 @@ def set_weights(vert,ranged_id,threshold_id,ranged_val,threshold_val):
 def set_weights_cumulative(vert,ranged_id,threshold_id,ranged_val,threshold_val,cooldown):
     for group in vert.groups:
         if group.group == ranged_id:
-            if ranged_val > group.weight:
-                group.weight = min(1,group.weight + ranged_val)
+            gw = group.weight
+            if ranged_val > gw :
+                group.weight  = min(1,gw  + ranged_val*0.5)
             elif cooldown > 0:
-                group.weight = max(0,group.weight - cooldown)
-
+                group.weight  = max(0,gw  - cooldown)
 
         elif group.group == threshold_id:
-            if threshold_val > group.weight:
+            gw = group.weight
+            if threshold_val > gw:
                 group.weight += min(1,threshold_val)
             elif cooldown > 0:
-                group.weight = max(0,group.weight - cooldown )
+                group.weight= max(0,gw - cooldown )
 
 def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
     filter_verts = grp.vertex_group_filter
     bias = grp.bias * 0.1
+    ids = get_vert_ids(obj)
 
+    cooldown = grp.cooldown
+
+    filter_id = None
     if filter_verts:
         filter_id = obj.vertex_groups[filter_verts].index
 
+    inc_verts = included_verts(ids,obj,filter_verts,filter_id)
+
+    inc_edges = included_edges(obj,inc_verts)
+
     tension_distance = grp.tension_distance
+    
+    
+    weights = collections.defaultdict(float)
 
     distances = collections.defaultdict(list)
-    weights = collections.defaultdict(float)
-    cooldown = grp.cooldown
 
+    for id_a,id_b,original_dist in inc_edges:
 
-    for edge in obj.data.edges:
-        id_a = edge.vertices[0]
-        id_b = edge.vertices[1]
-
-        included = True
-
-        if filter_verts:
-            included = False
-            o_vert = obj.data.vertices[id_a]
-            for g in o_vert.groups:
-                if g.group == filter_id and g.weight >  0.01:
-                    included = True
-                    break
-        if not included:
-            continue
-
-        
-        #original Verts 
-        vert_a = obj.data.vertices[id_a]
-        coA =  vert_a.co
-
-        
-        vert_b = obj.data.vertices[id_b]
-        coB =  vert_b.co
-        
         #deformed Verts 
-        eval_vert_a = obj_eval.verts[id_a]
+        eval_vert_a = obj_eval.data.vertices[id_a]
         eval_co_a = eval_vert_a.co
 
-        eval_vert_b = obj_eval.verts[id_b]
+        eval_vert_b = obj_eval.data.vertices[id_b]
         eval_co_b = eval_vert_b.co
 
         #distances
-
-        original_dist = distance_vec(coA,coB)
-
-        new_dist =  distance_vec(eval_co_a,eval_co_b)
+        new_dist = distance_vec(eval_co_a,eval_co_b)
 
         dist = round(new_dist -original_dist,4)
         neighbour_a = (id_a,dist)
-
         neighbour_b = (id_b,dist)
 
         distances[id_a].append(neighbour_b)
         distances[id_b].append(neighbour_a)
 
-    
 
     for id in distances:
-
-        vert= obj.data.vertices[id]
-
-        n = distances.get(id)
-        d = [x[1] for x in n]
+        neighbours = distances.get(id)
+        dists= [x[1] for x in neighbours]
         #print(d)
 
         #smallest and largest
-        s,l = (min(d),max(d))
+        s,l = min(dists),max(dists)
 
         distance_inv = tension_distance * -1 
         if grp.dominance == 'Dominant':
@@ -361,11 +387,16 @@ def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
                 dist = l
         else:
             #average
-            dist = (s-bias +l)/2
+            dist = (s + l+bias)/2
       
-        ranged_val = max(min((dist - distance_inv) /(tension_distance - distance_inv),1),0)
+        if grp.invert:
+            ranged_val = max(min((dist - tension_distance) /(distance_inv - tension_distance),1),0)
+        else:
+            ranged_val = max(min((dist - distance_inv) /(tension_distance - distance_inv),1),0)
+    
 
         weights[id]=ranged_val
+
 
         if threshold_id:
             if s < distance_inv or l > tension_distance:
@@ -373,9 +404,12 @@ def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
             else:
                 threshold_val = 0
         else:
-            threshold_val =0
+            threshold_val = 0
 
         if not grp.average or threshold_id:
+            vert= obj.data.vertices[id]
+
+            #block ranged val from being set if smooth weights
             if grp.average:
                 temp_ranged_id = None
             else:
@@ -392,12 +426,12 @@ def vert_tension(grp,obj,obj_eval,ranged_id,threshold_id):
         for n in range(iterations):
             last = True if n == iterations-1 else False
             #print(n,last)
-            average(obj,weights,distances,ranged_id,last)
+            average(obj,weights,distances,ranged_id,last,grp)
 
     del distances
     del weights
 
-def average(obj,weights,distances,ranged_id,last):
+def average(obj,weights,distances,ranged_id,last,grp):
     
     for id in distances:
         n = distances.get(id)
@@ -421,17 +455,23 @@ def average(obj,weights,distances,ranged_id,last):
 
                 if last:
                     vert_a = obj.data.vertices[id]
-                    set_weights(vert_a,ranged_id,None,ranged_val,0)  
+                    if grp.cumulative:
+                        set_weights_cumulative(vert_a,ranged_id,None,ranged_val,0,grp.cooldown)
+                    else:
+                        set_weights(vert_a,ranged_id,None,ranged_val,0)  
 
             else:
                 #print(s,l)
                 ranged_val = current_weight
                 if last:
                     vert_a = obj.data.vertices[id]
-                    set_weights(vert_a,ranged_id,None,ranged_val,0)  
-         
+                    if grp.cumulative:
+                        set_weights_cumulative(vert_a,ranged_id,None,ranged_val,0,grp.cooldown)
+                    else:
+                        set_weights(vert_a,ranged_id,None,ranged_val,0)   
+
 def distance_vec(point1: Vector, point2: Vector) -> float:
-    return (point2 - point1).length       
+    return (point2 - point1).length
 
 def update_prop(self,coontext):
     execute(self)
@@ -492,6 +532,7 @@ class PROXIMITY_PT_panel(Panel):
                     if not grp.vertex_group_ranged and not grp.vertex_group_threshold:
                         col.enabled = False
                     col.prop(grp,'bias')
+                    col.prop(grp,'invert')
                     row = col.row()
                     row.prop(grp,'average')
                     row.prop(grp,'iterations')
@@ -505,6 +546,7 @@ class PROXIMITY_PT_panel(Panel):
                 elif grp.mode =='Proximity':
                     layout.prop(grp,'proximity')
                     layout.prop(grp,'range_multiplier')
+                    layout.prop(grp,'invert')
                     layout.prop(grp,'cumulative')
                     if grp.cumulative:
                         layout.prop(grp,'cooldown')
@@ -590,7 +632,7 @@ class PROXIMITY_OT_make_vertGroup(Operator):
                 elif self.type == 'Filter':
                     grp.vertex_group_filter = self.type
             else:
-                self.report({'ERROR'},"No object has been assigned")
+                self.report({'ERROR'},"No object has been assigned or group already exists")
         else:
             if grp.collection:
                 for object in grp.collection.objects:
@@ -703,7 +745,14 @@ class Proximity_objects(bpy.types.PropertyGroup):
     
     cooldown : FloatProperty(min = 0, max = 1,name = 'Cool Down',description = "The amount of weight reduced per frame, higher is faster. TIP: try very low values like 0.001")
     
+    invert : BoolProperty(
+        name = "Invert Weights",
+        default= False,
+        update =update_prop)
+
     expand : BoolProperty(default= True)
+
+
 
 
 classes = [
