@@ -13,7 +13,7 @@ Created for Blender 2.90 and newer.
 This add-on is assign vertex weights for vertex proximity weights and tension weights within a single object. 
 This is not normally possible in Blender as objects cannot reference their own mesh data using either proximity modifier or Geometry Nodes.
 Note that a number of physics simulations may not work correctly as modiying weights or colors causes the caches to be outdated. The best practice is to bake the simulations first with the 'Live' button disabled.
-Furthermore, in some cases it is nescessary to bake the proximity weights to image sequences.
+Furthermore, in some cases it is necessary to bake the proximity weights to image sequences.
 
 --How to Install--
 
@@ -46,7 +46,7 @@ Threshold- Assigns a 0 OR 1 value to any vertex that is being displaced beyond t
 
 Ranged- Assigns values 0 > 1. These values are the normalised values of the displaced distances from threshold negative to threshold positive.
 for example. A threshold of 0.05 will give a range from -0.05 to 0.05. If a point moves closer to it's neighbouring point, further than 0.05m, it is considered compressing and negative. 
-If it is move away further than 0.05m it is stretching and postive. These values are then converted to 0-0.5-1
+If it is move away further than 0.05m it is stretching and positive. These values are then converted to 0-0.5-1
 
 0-------------0.5-----------1
 compressed  Neutral     Stretched
@@ -54,7 +54,7 @@ compressed  Neutral     Stretched
 Cloth simulations:
 Cloth sims will need to be baked before any calculations are made to avoid interfering with cache. I highly recommend that you add a Corrective Smooth modifier to you mesh.
 
-Filter: Choose a vertex group to limit calculations to certain points, this will improve perforamce on complex meshes. Any vertex that is assigned and has a weight of over 0.01 will be included.
+Filter: Choose a vertex group to limit calculations to certain points, this will improve performance on complex meshes. Any vertex that is assigned and has a weight of over 0.01 will be included.
 
 Baking pixel Sequence demo: https://youtu.be/QT_QXy7xpZE
 
