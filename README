@@ -1,4 +1,4 @@
-Proximity
+Proximity Addon
 Copyright (C) 2021 Pablo Tochez Anderson, Other Realms
 contact@pablotochez.com
 Licensed under GNU GPL-3.0-or-later
@@ -6,7 +6,6 @@ Licensed under GNU GPL-3.0-or-later
 This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU# General Public License for more details.
-
 
 
 Created for Blender 2.90 and newer.
@@ -28,7 +27,10 @@ Beking requires the python PILLOW library. Install by clicking "Install PILLOW" 
 --How To Use--
 First add an object in 3D-view right panel, 'Proximity'> Add Object and choose object.
 There are two modes, Proximity and Tension. Both modes only relate to the vertices within a single mesh and update on frame change or addon-parameter change.
+
 Note: The updates don't occur in Edit Mode. All calculations are made on the unsubdivied mesh, using a subdiv modifier is OK but will be a bit slower.
+Note: Instance meshes or meshes with multiple users won't work as expected as they share vertex weight data.
+Note: All objects be of Mesh type with the exception of the target object in 'Objects Proximity' mode.
 
 Vertex Group values can be mapped to vertex colours using geometry nodes, attribute ramp node. From 'Your Vertex Group' to 'Your vertex Col'.
 
@@ -51,8 +53,9 @@ If it is move away further than 0.05m it is stretching and positive. These value
 0-------------0.5-----------1
 compressed  Neutral     Stretched
 
-Cloth simulations:
-Cloth sims will need to be baked before any calculations are made to avoid interfering with cache. I highly recommend that you add a Corrective Smooth modifier to you mesh.
+Cloth and particle simulations:
+Cloth simulations will need to be baked before any calculations are made to avoid interfering with the cache. I highly recommend that you add a Corrective Smooth modifier to you mesh.
+Particle simulation may only work correctly after the weights have been baked into textures. You can then use the texture input in the Particle Properties > Textures section. Particle textures should be assigned the generated UV's.
 
 Filter: Choose a vertex group to limit calculations to certain points, this will improve performance on complex meshes. Any vertex that is assigned and has a weight of over 0.01 will be included.
 
