@@ -34,14 +34,14 @@ Note: All objects be of Mesh type with the exception of the target object in 'Ob
 
 Vertex Group values can be mapped to vertex colours using geometry nodes, attribute ramp node. From 'Your Vertex Group' to 'Your vertex Col'.
 
-Proximity:
+----Proximity-------------
 Assigns values to the threshold and ranged vertex groups. Only one groups is neccessary for output.
 
 Threshold- Assigns a 0 OR 1 value to any vertex depending on whether the vertex is within the threshold distance from its closest neighbour.
 
 Ranged- Adds an extra falloff useding the rangex parameter and uses 0 > 1 values.
 
-Tension:
+----Tension---------------
 Assigns values to the threshold and ranged vertex groups. Only one groups is neccessary for output.
 
 Threshold- Assigns a 0 OR 1 value to any vertex that is being displaced beyond threshold distance.
@@ -53,11 +53,33 @@ If it is move away further than 0.05m it is stretching and positive. These value
 0-------------0.5-----------1
 compressed  Neutral     Stretched
 
+----Objects Proximity-----
+Usese object locations from each object in a collection to calculate proximity to a target location.
+Note: Centres are determined by the objects origin and world location.
+
+Object- The target object, does not receive weights and can be any type.
+
+Neighbours- The maximum number of neighbours to look for
+
+Collection- Collection containing objects (meshse) to assign weights to.
+
+values to the threshold and ranged vertex groups. Only one groups is neccessary for output.
+
+Threshold- Assigns a 0 OR 1 value to any vertex depending on whether the vertex is within the threshold distance from its closest neighbour.
+
+Ranged- Adds an extra falloff useding the rangex parameter and uses 0 > 1 values.
+
+---------------------------------------------------
+Cumulative- adds weights with every update and is reset on the first scene frame.
+
+
+Filter Group- Choose a vertex group to limit calculations to certain points, this will improve performance on complex meshes. Any vertex that is assigned and has a weight of over 0.01 will be included.
+
 Cloth and particle simulations:
 Cloth simulations will need to be baked before any calculations are made to avoid interfering with the cache. I highly recommend that you add a Corrective Smooth modifier to you mesh.
 Particle simulation may only work correctly after the weights have been baked into textures. You can then use the texture input in the Particle Properties > Textures section. Particle textures should be assigned the generated UV's.
 
-Filter: Choose a vertex group to limit calculations to certain points, this will improve performance on complex meshes. Any vertex that is assigned and has a weight of over 0.01 will be included.
+
 
 Baking pixel Sequence demo: https://youtu.be/QT_QXy7xpZE
 
