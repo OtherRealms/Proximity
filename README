@@ -14,6 +14,9 @@ This is not normally possible in Blender as objects cannot reference their own m
 Note that a number of physics simulations may not work correctly as modiying weights or colors causes the caches to be outdated. The best practice is to bake the simulations first with the 'Live' button disabled.
 Furthermore, in some cases it is necessary to bake the proximity weights to image sequences.
 
+Comments and updates on Blender Artist thread: https://blenderartists.org/t/proximity-tension-free-add-on/1311013/7
+
+
 --How to Install--
 
 Click Clone or Download
@@ -49,6 +52,7 @@ Threshold- Assigns a 0 OR 1 value to any vertex that is being displaced beyond t
 Ranged- Assigns values 0 > 1. These values are the normalised values of the displaced distances from threshold negative to threshold positive.
 for example. A threshold of 0.05 will give a range from -0.05 to 0.05. If a point moves closer to it's neighbouring point, further than 0.05m, it is considered compressing and negative. 
 If it is move away further than 0.05m it is stretching and positive. These values are then converted to 0-0.5-1
+Converting weights to vertex colours: https://blenderartists.org/t/proximity-tension-free-add-on/1311013/7
 
 0-------------0.5-----------1
 compressed  Neutral     Stretched
