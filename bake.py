@@ -30,7 +30,7 @@ except ModuleNotFoundError as err:
 
 class PROXIMITY_OT_install_PILLOW(Operator):
     bl_idname = "proximity.install_pillow"
-    bl_description = "Download and and install PILLOW library"
+    bl_description = "Download and install PILLOW library"
     bl_label = "Install PILLOW"
 
     def execute(self,context):
@@ -70,7 +70,7 @@ class PROXIMITY_OT_bake(Operator):
 
     grp : IntProperty(options={'HIDDEN'})
     vertex_grp : EnumProperty(name = 'Vertex Group', items = (('vertex_group_threshold','THRESHOLD','THRESHOLD'),('vertex_group_ranged','RANGED','RANGED')))
-    bakeMethod : EnumProperty(name = 'Method', items = (('Image Sequence','Image Sequence','Image Sequence'),('Pixel Sequence','Pixel Sequence','Creates a single image with an X pixel per frame,Y pixel per object')))
+    bakeMethod : EnumProperty(name = 'Method', items = (('Image Sequence','Image Sequence','Image Sequence'),('Pixel Sequence','Pixel Sequence','Creates a single image with an X pixel per frame, Y pixel per object')))
     temporal_smooth : BoolProperty(name = "Temporal Smoothing",description = "Blender frames to reduce flicker")
     vert_grp_name = ""
     rounds = 0
@@ -340,7 +340,7 @@ class PROXIMITY_OT_bake(Operator):
 
         self.img = img
         
-        return {'PASSTHORUGH'}
+        return {'PASSTHROUGH'}
     
     def bake_object_pixel_sq(self,context):
         count_y = 0
@@ -532,7 +532,7 @@ class PROXIMITY_OT_bake(Operator):
 
         context.scene.frame_current +=1
         
-        return {'PASSTHORUGH'}
+        return {'PASSTHROUGH'}
 
     def shrink_uvs(self,context):
         def iterate_polys(obj,uv_data):
