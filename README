@@ -34,6 +34,7 @@ There are two modes, Proximity and Tension. Both modes only relate to the vertic
 Note: The updates don't occur in Edit Mode. All calculations are made on the unsubdivied mesh, using a subdiv modifier is OK but will be a bit slower.
 Note: Instance meshes or meshes with multiple users won't work as expected as they share vertex weight data.
 Note: All objects be of Mesh type with the exception of the target object in 'Objects Proximity' mode.
+Note: This will not work with generative modifiers and those in the 'Generate' column or geometry created via geometry nodes.
 
 Vertex Group values can be mapped to vertex colours using geometry nodes, attribute ramp node. From 'Your Vertex Group' to 'Your vertex Col'.
 
