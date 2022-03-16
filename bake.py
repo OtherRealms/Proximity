@@ -15,7 +15,7 @@ try:
     
 
     print('Importing PIL')
-    version_list = PIL.PILLOW_VERSION.split('.')
+    version_list = PIL.__version__.split('.')
     version = [0,0,0]
     for i in range(0, len(version_list)): 
         version[i] = int(version_list [i]) 
