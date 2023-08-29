@@ -7,6 +7,7 @@ This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU# General Public License for more details.
 
+############################  THIS ADDON IS NO LONGER MAINTAINED ########################## Its has been supplanted with Geometry Nodes: https://otrealms.gumroad.com/l/botasq
 
 Created for Blender 2.90 and newer.
 This add-on is assign vertex weights for vertex proximity weights and tension weights within a single object. 
