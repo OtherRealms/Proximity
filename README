@@ -1,3 +1,5 @@
+############################  THIS ADDON IS NO LONGER MAINTAINED ########################## The tension functions have been supplanted with this Geometry Nodes file: https://otrealms.gumroad.com/l/botasq
+
 Proximity Addon
 Copyright (C) 2021 Pablo Tochez Anderson, Other Realms
 contact@pablotochez.com
@@ -6,8 +8,6 @@ Licensed under GNU GPL-3.0-or-later
 This program is distributed in the hope that it will be useful, but
 WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTIBILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU# General Public License for more details.
-
-############################  THIS ADDON IS NO LONGER MAINTAINED ########################## Its has been supplanted with Geometry Nodes: https://otrealms.gumroad.com/l/botasq
 
 Created for Blender 2.90 and newer.
 This add-on is assign vertex weights for vertex proximity weights and tension weights within a single object. 
